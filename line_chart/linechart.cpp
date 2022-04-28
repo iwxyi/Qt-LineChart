@@ -178,7 +178,7 @@ void LineChart::paintEvent(QPaintEvent *event)
         return ;
 
     QFontMetrics fm(painter.font());
-    int lineSpacing = fm.lineSpacing();
+    int lineSpacing = fm.height();
     QPoint accessNearestPos = hoverPos;
     int accessMinDis = 0x3f3f3f3f;
 
@@ -188,7 +188,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     painter.setClipRect(contentRect);
     for (int i = 0; i < datas.size(); i++)
     {
-        // 计算点要绘制的坐标
+        // 计算点要绘制的所有坐标
         QList<QPoint> displayPoints;
         const ChartData& line = datas.at(i);
         for (int j = 0; j < line.points.size(); j++)
@@ -207,7 +207,7 @@ void LineChart::paintEvent(QPaintEvent *event)
 
         // 连线
         QPainterPath path;
-        if (pointLineType == 0) // 直线
+        if (pointLineType == 1) // 直线
         {
             if (displayPoints.size())
             {
@@ -216,7 +216,7 @@ void LineChart::paintEvent(QPaintEvent *event)
                     path.lineTo(displayPoints.at(i));
             }
         }
-        else if (pointLineType == 1) // 曲线
+        else if (pointLineType == 2) // 曲线
         {
             // TODO: 平滑的贝塞尔曲线
         }
@@ -224,27 +224,86 @@ void LineChart::paintEvent(QPaintEvent *event)
         painter.drawPath(path);
 
         // 绘制点的小圆点
-        if (showPointDot)
+        if (pointDotType)
         {
             for (int i = 0; i < displayPoints.size(); i++)
             {
                 const QPoint& pt = displayPoints.at(i);
                 QRect pointRect(pt.x() - pointDotRadius, pt.y() - pointDotRadius, pointDotRadius * 2, pointDotRadius * 2);
-                if (pointDotType == 0) // 空心圆
+                if (pointDotType == 1) // 空心圆
                 {
                     painter.drawEllipse(pointRect);
                 }
-                else if (pointDotType == 1) // 实心圆
+                else if (pointDotType == 2) // 实心圆
                 {
                     QPainterPath path;
                     path.addEllipse(pointRect);
                     painter.fillPath(path, line.color);
                 }
-                else if (pointDotType == 2) // 小方块
+                else if (pointDotType == 3) // 小方块
                 {
                     painter.fillRect(pointRect, line.color);
                 }
             }
+        }
+
+        // 绘制数值
+        if (pointValueType)
+        {
+            const QList<QPoint>& points = line.points;
+            for (int i = 0; i < points.size(); i++)
+            {
+                QString text = QString::number(points.at(i).y());
+                QPoint pos = displayPoints.at(i);
+                int w = fm.horizontalAdvance(text);
+                int x = pos.x() - w / 2;
+                int y = pos.y() - pointDotRadius - fm.leading(); // 默认是强制正上方位置
+                if (pointValueType == 2) // 所有，自动选取合适的
+                {
+                    if (i == 0 && i < points.size() - 1)
+                    {
+                        if (points.at(i + 1).y() > points.at(i).y()) // 显示在下方
+                            y = pos.y() + lineSpacing + pointDotRadius;
+                    }
+                    else if (i > 0 && i < points.size() - 1)
+                    {
+                        int v = points.at(i).y();
+                        int vl = points.at(i-1).y();
+                        int vr = points.at(i+1).y();
+                        if (vl > v && vr > v) // V型，显示在下面
+                            y = pos.y() + lineSpacing + pointDotRadius;
+                        else if (vl < v && vr > v) // 显示偏左
+                            x -= w / 2;
+                        else if (vl > v && vr < v) // 显示偏右
+                            x += w / 2;
+                        // TODO: 还可以根据两侧斜率来进一步优化
+                    }
+                    else if (i == points.size() - 1 && points.size() > 1)
+                    {
+                        if (points.at(i-1).y() > points.at(i).y()) // 显示在下方
+                            y = pos.y() + lineSpacing + pointDotRadius;
+                    }
+                }
+                else if (pointValueType == 3) // 选合适的进行显示
+                {
+                    // TODO: 判断密集程度
+                    continue;
+                }
+
+                // 判断超出边界
+                if (x - w / 2 < contentRect.left())
+                    x = contentRect.left();
+                else if (x + w > contentRect.right())
+                    x = contentRect.right() - w;
+                if (y - lineSpacing < contentRect.top())
+                    y = pos.y() + lineSpacing + pointDotRadius;
+                else if (y > contentRect.bottom())
+                    y = pos.y() - pointDotRadius - fm.leading();
+
+                // 绘制文字
+                painter.drawText(QPoint(x, y), text);
+            }
+
         }
 
         // 计算距离最近的点
@@ -271,17 +330,17 @@ void LineChart::paintEvent(QPaintEvent *event)
         painter.save();
         painter.setPen(hightlightColor);
         QRect pointRect(accessNearestPos.x() - pointDotRadius, accessNearestPos.y() - pointDotRadius, pointDotRadius * 2, pointDotRadius * 2);
-        if (pointDotType == 0) // 空心圆
+        if (pointDotType == 0 || pointDotType == 1) // 空心圆
         {
             painter.drawEllipse(pointRect);
         }
-        else if (pointDotType == 1) // 实心圆
+        else if (pointDotType == 2) // 实心圆
         {
             QPainterPath path;
             path.addEllipse(pointRect);
             painter.fillPath(path, hightlightColor);
         }
-        else if (pointDotType == 2) // 小方块
+        else if (pointDotType == 3) // 小方块
         {
             painter.fillRect(pointRect, hightlightColor);
         }
@@ -320,7 +379,7 @@ void LineChart::paintEvent(QPaintEvent *event)
                 val = displayXMax; // 确保最大值一直显示
             int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
             int w = fm.horizontalAdvance(QString::number(val)); // 文字宽度
-            if (pressing && contentRect.contains(accessNearestPos) && (x + contentRect.left() >= accessNearestPos.x() - w && x + contentRect.left() <= accessNearestPos.x() + w))
+            if (hovering && contentRect.contains(accessNearestPos) && (x + contentRect.left() >= accessNearestPos.x() - w && x + contentRect.left() <= accessNearestPos.x() + w))
             {
                 x = accessNearestPos.x() - contentRect.left();
                 val = (displayXMax - displayXMin) * x / contentRect.width();
@@ -364,7 +423,7 @@ void LineChart::paintEvent(QPaintEvent *event)
             }
             int y = contentRect.height() * (val - displayYMin) / (displayYMax - displayYMin);
             y = contentRect.bottom() - y;
-            if (pressing && contentRect.contains(accessNearestPos) && (y >= accessNearestPos.y() - lineSpacing && y <= accessNearestPos.y() + lineSpacing))
+            if (hovering && contentRect.contains(accessNearestPos) && (y >= accessNearestPos.y() - lineSpacing && y <= accessNearestPos.y() + lineSpacing))
             {
                 y = accessNearestPos.y();
                 val = (displayYMax - displayYMin) * (contentRect.bottom() - y) / contentRect.height() + displayYMin;
@@ -395,17 +454,11 @@ void LineChart::paintEvent(QPaintEvent *event)
 
     /// 交互
     // 画鼠标交互的线
-    if (showCrossOnPressing && pressing && contentRect.contains(accessNearestPos))
+    if (showCrossOnPressing && hovering && contentRect.contains(accessNearestPos))
     {
         painter.setPen(QPen(hightlightColor, 0.5, Qt::DashLine));
         painter.drawLine(contentRect.left(), accessNearestPos.y(), contentRect.right(), accessNearestPos.y());
         painter.drawLine(accessNearestPos.x(), contentRect.top(), accessNearestPos.x(), contentRect.bottom());
-    }
-
-    // 画鼠标交互的点
-    if (hovering)
-    {
-
     }
 
 
