@@ -13,6 +13,7 @@ int LineChart::lineCount() const
 
 void LineChart::addData(ChartData data)
 {
+    saveRange();
     // 检查数据有效性
     if (!data.points.empty())
     {
@@ -92,14 +93,14 @@ void LineChart::addData(ChartData data)
         }
     }
 
-
     datas.append(data);
 
-    update();
+    startRangeAnimation();
 }
 
 void LineChart::addPoint(int index, int x, int y)
 {
+    saveRange();
     Q_ASSERT(index < datas.size());
     displayXMin = qMin(displayXMin, x);
     displayXMax = qMax(displayXMax, x);
@@ -107,7 +108,7 @@ void LineChart::addPoint(int index, int x, int y)
     displayYMax = qMax(displayYMax, y);
 
     datas[index].points.append(QPoint(x, y));
-    update();
+    startRangeAnimation();
 }
 
 void LineChart::addPoint(int index, int x, int y, const QString &label)
@@ -137,7 +138,6 @@ void LineChart::removeFirst(int index)
 {
     Q_ASSERT(index <= datas.size());
     datas[index].points.removeFirst();
-    update();
 }
 
 void LineChart::paintEvent(QPaintEvent *event)
@@ -178,6 +178,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     }
     else // 使用 xMin ~ xMax 的 int
     {
+        bool highlighted = false;
         int maxTextWidth = qMax(fm.horizontalAdvance(QString::number(displayXMin)), fm.horizontalAdvance(QString::number(displayXMax)));
         int displayCount = qMax((contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing), 1); // 最多显示多少个标签
         int step = qMax((displayXMax - displayXMin + displayCount) / displayCount, 1);
@@ -193,10 +194,21 @@ void LineChart::paintEvent(QPaintEvent *event)
                 x = hoverPos.x() - contentRect.left();
                 val = (displayXMax - displayXMin) * x / contentRect.width();
                 w = fm.horizontalAdvance(QString::number(val));
+                highlighted = true;
             }
             int l = x - w / 2, r = x + w / 2;
 
+            if (highlighted)
+            {
+                painter.save();
+                painter.setPen(hightlightColor);
+            }
             painter.drawText(QPoint(l + contentRect.left(),  contentRect.bottom() + lineSpacing), QString::number(val));
+            if (highlighted)
+            {
+                painter.restore();
+                highlighted = false;
+            }
             lastRight = r;
         }
     }
@@ -204,6 +216,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     // 画Y轴数值
     for (int k = 0; k < datas.size() && k < 1; k++)
     {
+        bool highlighted = false;
         int displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1);
         int step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1);
         for (int i = displayYMin; i <= displayYMax; i += step)
@@ -219,10 +232,15 @@ void LineChart::paintEvent(QPaintEvent *event)
             {
                 y = hoverPos.y();
                 val = (displayYMax - displayYMin) * (contentRect.bottom() - y) / contentRect.height() + displayYMin;
-                // i += step;
+                highlighted = true;
             }
             int w = fm.horizontalAdvance(QString::number(val));
 
+            if (highlighted)
+            {
+                painter.save();
+                painter.setPen(hightlightColor);
+            }
             if (k == 0) // 左边
             {
                 painter.drawText(QPoint(contentRect.left() - labelSpacing - w, y + lineSpacing / 2), QString::number(val));
@@ -230,6 +248,11 @@ void LineChart::paintEvent(QPaintEvent *event)
             else // 右边
             {
                 painter.drawText(QPoint(contentRect.right() + labelSpacing, y + lineSpacing / 2), QString::number(val));
+            }
+            if (highlighted)
+            {
+                painter.restore();
+                highlighted = false;
             }
         }
     }
@@ -332,4 +355,85 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
         pressing = false;
     }
     update();
+}
+
+void LineChart::setDisplayXMin(int v)
+{
+    this->displayXMin = v;
+    update();
+}
+
+int LineChart::getDisplayXMin() const
+{
+    return this->displayXMin;
+}
+
+void LineChart::setDisplayXMax(int v)
+{
+    this->displayXMax = v;
+    update();
+}
+
+int LineChart::getDisplayXMax() const
+{
+    return this->displayXMax;
+}
+
+void LineChart::setDisplayYMin(int v)
+{
+    this->displayYMin = v;
+    update();
+}
+
+int LineChart::getDisplayYMin() const
+{
+    return this->displayYMin;
+}
+
+void LineChart::setDisplayYMax(int v)
+{
+    this->displayYMax = v;
+    update();
+}
+
+int LineChart::getDisplayYMax() const
+{
+    return this->displayYMax;
+}
+
+void LineChart::saveRange()
+{
+    _savedXMin = displayXMin;
+    _savedXMax = displayXMax;
+    _savedYMin = displayYMin;
+    _savedYMax = displayYMax;
+}
+
+void LineChart::startRangeAnimation()
+{
+    if (!enableAnimation)
+    {
+        update();
+        return ;
+    }
+    if (_savedXMin != displayXMin)
+        startAnimation("display_x_min", _savedXMin, displayXMin);
+    if (_savedXMax != displayXMax)
+        startAnimation("display_x_max", _savedXMax, displayXMax);
+    if (_savedYMin != displayYMin)
+        startAnimation("display_y_min", _savedYMin, displayYMin);
+    if (_savedYMax != displayYMax)
+        startAnimation("display_y_max", _savedYMax, displayYMax);
+}
+
+QPropertyAnimation *LineChart::startAnimation(const QByteArray &property, int start, int end, int duration, QEasingCurve curve)
+{
+    QPropertyAnimation* ani = new QPropertyAnimation(this, property);
+    ani->setStartValue(start);
+    ani->setEndValue(end);
+    ani->setDuration(duration);
+    ani->setEasingCurve(curve);
+    connect(ani, SIGNAL(finished()), ani, SLOT(deleteLater()));
+    ani->start();
+    return ani;
 }

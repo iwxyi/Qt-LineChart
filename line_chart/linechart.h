@@ -6,6 +6,7 @@
 #include <QList>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPropertyAnimation>
 
 struct ChartData
 {
@@ -22,6 +23,10 @@ struct ChartData
 class LineChart : public QWidget
 {
     Q_OBJECT
+    Q_PROPERTY(int display_x_min READ getDisplayXMin WRITE setDisplayXMin)
+    Q_PROPERTY(int display_x_max READ getDisplayXMax WRITE setDisplayXMax)
+    Q_PROPERTY(int display_y_min READ getDisplayYMin WRITE setDisplayYMin)
+    Q_PROPERTY(int display_y_max READ getDisplayYMax WRITE setDisplayYMax)
 public:
     LineChart(QWidget *parent = nullptr);
 
@@ -42,6 +47,20 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+
+private:
+    void setDisplayXMin(int v);
+    int getDisplayXMin() const;
+    void setDisplayXMax(int v);
+    int getDisplayXMax() const;
+    void setDisplayYMin(int v);
+    int getDisplayYMin() const;
+    void setDisplayYMax(int v);
+    int getDisplayYMax() const;
+
+    void saveRange();
+    void startRangeAnimation();
+    QPropertyAnimation* startAnimation(const QByteArray &property, int start, int end, int duration = 300, QEasingCurve curve = QEasingCurve::OutQuad);
 
 private:
     // 数据
@@ -69,8 +88,13 @@ private:
     QPoint hoverPos;
 
     // 交互效果
+    bool enableAnimation = true;
     bool showCrossOnPressing = true;        // 按下显示十字对准线
     QColor hightlightColor = Qt::red;       // 高亮颜色
+
+    // 动画效果
+    int _savedXMin, _savedXMax;
+    int _savedYMin, _savedYMax;
 };
 
 #endif // LINECHART_H
