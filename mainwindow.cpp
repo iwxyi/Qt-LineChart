@@ -16,6 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     for (int i = 0; i <= 20; i++)
     {
         data.points.append(QPoint(i * 5, qrand() % 60 + 20));
+        // data.xLabels.append(QString::number(i * 5));
     }
 
     ui->widget->addData(data);
