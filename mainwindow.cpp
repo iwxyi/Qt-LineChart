@@ -50,3 +50,9 @@ void MainWindow::on_pushButton_clicked()
     ui->widget->addPoint(0, x, qrand() % 60 + 20);
     ui->widget->addPoint(1, x, qrand() % 30);
 }
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    for (int i = 0; i < ui->widget->lineCount(); i++)
+        ui->widget->removeFirst(i);
+}
