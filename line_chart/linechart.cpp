@@ -178,20 +178,20 @@ void LineChart::paintEvent(QPaintEvent *event)
         return ;
 
     // 画X轴数值
-    QFontMetricsF fm(painter.font());
-    double lineSpacing = fm.lineSpacing();
-    double lastRight = 0; // 上一次绘图的位置
+    QFontMetrics fm(painter.font());
+    int lineSpacing = fm.lineSpacing();
+    int lastRight = 0; // 上一次绘图的位置
     if (usePointXLabels && xLabels.size()) // 使用传入的label，可以是和数据对应的任意字符串
     {
         for (int i = 0; i < xLabels.size(); i++)
         {
             int val = xLabelPoss.at(i); // 数据x
             int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
-            double w = fm.horizontalAdvance(xLabels.at(i)); // 文字宽度
-            double l = x - w / 2, r = x + w / 2; // 绘制的文字x范围
-            if (!i || l > lastRight + labelSpacing || (i == xLabels.size() - 1 && (l = lastRight + labelSpacing) > 0))
+            int w = fm.horizontalAdvance(xLabels.at(i)); // 文字宽度
+            int l = x - w / 2, r = x + w / 2; // 绘制的文字x范围
+            if (!i || l > lastRight + labelSpacing || (i == xLabels.size() - 1 && (l = lastRight + labelSpacing)))
             {
-                painter.drawText(QPointF(l + contentRect.left(),  contentRect.bottom() + lineSpacing), xLabels.at(i));
+                painter.drawText(QPoint(l + contentRect.left(),  contentRect.bottom() + lineSpacing), xLabels.at(i));
                 lastRight = r;
             }
         }
@@ -199,31 +199,31 @@ void LineChart::paintEvent(QPaintEvent *event)
     else // 使用 xMin ~ xMax 的 int
     {
         bool highlighted = false;
-        double maxTextWidth = qMax(fm.horizontalAdvance(QString::number(displayXMin)), fm.horizontalAdvance(QString::number(displayXMax)));
-        double displayCount = qMax((contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing), 1.0); // 最多显示多少个标签
-        double step = qMax((displayXMax - displayXMin + displayCount) / displayCount, 1.0);
-        for (double i = displayXMin; i <= displayXMax; i += step)
+        int maxTextWidth = qMax(fm.horizontalAdvance(QString::number(displayXMin)), fm.horizontalAdvance(QString::number(displayXMax)));
+        int displayCount = qMax((contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing), 1); // 最多显示多少个标签
+        int step = qMax((displayXMax - displayXMin + displayCount) / displayCount, 1);
+        for (int i = displayXMin; i <= displayXMax; i += step)
         {
-            int val = int(i + 0.5);
+            int val = i;
             if (val > displayXMax - step)
                 val = displayXMax; // 确保最大值一直显示
-            double x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
-            double w = fm.horizontalAdvance(QString::number(val)); // 文字宽度
+            int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
+            int w = fm.horizontalAdvance(QString::number(val)); // 文字宽度
             if (pressing && contentRect.contains(hoverPos) && (x + contentRect.left() >= hoverPos.x() - w && x + contentRect.left() <= hoverPos.x() + w))
             {
                 x = hoverPos.x() - contentRect.left();
-                val = int((displayXMax - displayXMin) * x / contentRect.width() + 0.5);
+                val = (displayXMax - displayXMin) * x / contentRect.width();
                 w = fm.horizontalAdvance(QString::number(val));
                 highlighted = true;
             }
-            double l = x - w / 2, r = x + w / 2;
+            int l = x - w / 2, r = x + w / 2;
 
             if (highlighted)
             {
                 painter.save();
                 painter.setPen(hightlightColor);
             }
-            painter.drawText(QPointF(l + contentRect.left(),  contentRect.bottom() + lineSpacing), QString::number(val));
+            painter.drawText(QPoint(l + contentRect.left(),  contentRect.bottom() + lineSpacing), QString::number(val));
             if (highlighted)
             {
                 painter.restore();
@@ -237,17 +237,20 @@ void LineChart::paintEvent(QPaintEvent *event)
     for (int k = 0; k < datas.size() && k < 1; k++)
     {
         bool highlighted = false;
-        double displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1.0);
-        double step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1.0);
-        bool firstLoop = false;
-        for (double i = displayYMin; i <= displayYMax; i += step)
+        int displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1);
+        int step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1);
+        for (int i = displayYMin; i <= displayYMax; i += step)
         {
-            if (firstLoop && displayYMin == 0 && displayXMin == 0) // X轴有0了，Y轴不重复显示
+            if (i == displayYMin && i == 0 && displayXMin == 0) // X轴有0了，Y轴不重复显示
                 continue;
-            firstLoop = false;
-            int val = int(i + 0.5);
+            int val = i;
             if (val > displayYMax - step)
-                val = displayYMax; // 确保最大值一直显示
+            {
+                if (val < displayYMax - step / 2)
+                    i = displayYMax - step;
+                else
+                    val = displayYMax; // 确保最大值一直显示
+            }
             int y = contentRect.height() * (val - displayYMin) / (displayYMax - displayYMin);
             y = contentRect.bottom() - y;
             if (pressing && contentRect.contains(hoverPos) && (y >= hoverPos.y() - lineSpacing && y <= hoverPos.y() + lineSpacing))
@@ -256,7 +259,7 @@ void LineChart::paintEvent(QPaintEvent *event)
                 val = (displayYMax - displayYMin) * (contentRect.bottom() - y) / contentRect.height() + displayYMin;
                 highlighted = true;
             }
-            double w = fm.horizontalAdvance(QString::number(val));
+            int w = fm.horizontalAdvance(QString::number(val));
 
             if (highlighted)
             {
@@ -265,11 +268,11 @@ void LineChart::paintEvent(QPaintEvent *event)
             }
             if (k == 0) // 左边
             {
-                painter.drawText(QPointF(contentRect.left() - labelSpacing - w, y + lineSpacing / 2), QString::number(val));
+                painter.drawText(QPoint(contentRect.left() - labelSpacing - w, y + lineSpacing / 2), QString::number(val));
             }
             else // 右边
             {
-                painter.drawText(QPointF(contentRect.right() + labelSpacing, y + lineSpacing / 2), QString::number(val));
+                painter.drawText(QPoint(contentRect.right() + labelSpacing, y + lineSpacing / 2), QString::number(val));
             }
             if (highlighted)
             {
@@ -281,6 +284,7 @@ void LineChart::paintEvent(QPaintEvent *event)
 
     // 画线条
     painter.save();
+    QPainterPath contentPath;
     painter.setClipRect(contentRect);
     for (int i = 0; i < datas.size(); i++)
     {
