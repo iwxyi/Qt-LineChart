@@ -18,6 +18,13 @@
     <item>
      <widget class="LineChart" name="widget" native="true"/>
     </item>
+    <item>
+     <widget class="QPushButton" name="pushButton">
+      <property name="text">
+       <string>add</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">

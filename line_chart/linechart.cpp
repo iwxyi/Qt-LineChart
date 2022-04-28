@@ -3,7 +3,12 @@
 
 LineChart::LineChart(QWidget *parent) : QWidget(parent)
 {
+    setMouseTracking(true);
+}
 
+int LineChart::lineCount() const
+{
+    return datas.size();
 }
 
 void LineChart::addData(ChartData data)
@@ -96,8 +101,43 @@ void LineChart::addData(ChartData data)
 void LineChart::addPoint(int index, int x, int y)
 {
     Q_ASSERT(index < datas.size());
-    Q_UNUSED(x)
-    Q_UNUSED(y)
+    displayXMin = qMin(displayXMin, x);
+    displayXMax = qMax(displayXMax, x);
+    displayYMin = qMin(displayYMin, y);
+    displayYMax = qMax(displayYMax, y);
+
+    datas[index].points.append(QPoint(x, y));
+    update();
+}
+
+void LineChart::addPoint(int index, int x, int y, const QString &label)
+{
+    bool inserted = false;
+    for (int i = xLabels.size() - 1; i >= 0; i--)
+    {
+        if (xLabelPoss.at(i) == x)
+            break;
+        if (xLabelPoss.at(i) < x)
+        {
+            xLabels.insert(i + 1, label);
+            xLabelPoss.insert(i + 1, x);
+            inserted = true;
+            break;
+        }
+    }
+    if (!inserted)
+    {
+        xLabels.insert(0, label);
+        xLabelPoss.insert(0, x);
+    }
+    addPoint(index, x, y);
+}
+
+void LineChart::removeFirst(int index)
+{
+    Q_ASSERT(index <= datas.size());
+    datas[index].points.removeFirst();
+    update();
 }
 
 void LineChart::paintEvent(QPaintEvent *event)
@@ -111,7 +151,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     QRect contentRect(paddings.left(), paddings.top(),
                       width() - paddings.left() - paddings.width(),
                       height() - paddings.top() - paddings.height());
-    painter.setPen(borderColor);
+    painter.setPen(QPen(borderColor, 0.5));
     painter.drawRect(contentRect);
 
     if (datas.empty() || displayXMin >= displayXMax || displayYMin >= displayYMax)
@@ -120,7 +160,6 @@ void LineChart::paintEvent(QPaintEvent *event)
     // 画X轴数值
     QFontMetrics fm(painter.font());
     int lineSpacing = fm.lineSpacing();
-    const int labelSpacing = 2;
     int lastRight = 0; // 上一次绘图的位置
     if (usePointXLabels && xLabels.size()) // 使用传入的label，可以是和数据对应的任意字符串
     {
@@ -149,6 +188,12 @@ void LineChart::paintEvent(QPaintEvent *event)
                 val = displayXMax; // 确保最大值一直显示
             int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
             int w = fm.horizontalAdvance(QString::number(val)); // 文字宽度
+            if (pressing && contentRect.contains(hoverPos) && (x + contentRect.left() >= hoverPos.x() - w && x + contentRect.left() <= hoverPos.x() + w))
+            {
+                x = hoverPos.x() - contentRect.left();
+                val = (displayXMax - displayXMin) * x / contentRect.width();
+                w = fm.horizontalAdvance(QString::number(val));
+            }
             int l = x - w / 2, r = x + w / 2;
 
             painter.drawText(QPoint(l + contentRect.left(),  contentRect.bottom() + lineSpacing), QString::number(val));
@@ -157,7 +202,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     }
 
     // 画Y轴数值
-    for (int k = 0; k < datas.size() & k < 2; k++)
+    for (int k = 0; k < datas.size() && k < 1; k++)
     {
         int displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1);
         int step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1);
@@ -169,15 +214,22 @@ void LineChart::paintEvent(QPaintEvent *event)
             if (val > displayYMax - step)
                 val = displayYMax; // 确保最大值一直显示
             int y = contentRect.height() * (val - displayYMin) / (displayYMax - displayYMin);
+            y = contentRect.bottom() - y;
+            if (pressing && contentRect.contains(hoverPos) && (y >= hoverPos.y() - lineSpacing && y <= hoverPos.y() + lineSpacing))
+            {
+                y = hoverPos.y();
+                val = (displayYMax - displayYMin) * (contentRect.bottom() - y) / contentRect.height() + displayYMin;
+                // i += step;
+            }
             int w = fm.horizontalAdvance(QString::number(val));
 
             if (k == 0) // 左边
             {
-                painter.drawText(QPoint(contentRect.left() - labelSpacing - w, contentRect.bottom() - y + lineSpacing / 2), QString::number(val));
+                painter.drawText(QPoint(contentRect.left() - labelSpacing - w, y + lineSpacing / 2), QString::number(val));
             }
             else // 右边
             {
-                painter.drawText(QPoint(contentRect.right() + labelSpacing, contentRect.bottom() - y + lineSpacing / 2), QString::number(val));
+                painter.drawText(QPoint(contentRect.right() + labelSpacing, y + lineSpacing / 2), QString::number(val));
             }
         }
     }
@@ -209,7 +261,19 @@ void LineChart::paintEvent(QPaintEvent *event)
     }
     painter.restore();
 
+    // 画鼠标交互的线
+    if (showCrossOnPressing && pressing && contentRect.contains(hoverPos))
+    {
+        painter.setPen(QPen(hightlightColor, 0.5, Qt::DashLine));
+        painter.drawLine(contentRect.left(), hoverPos.y(), contentRect.right(), hoverPos.y());
+        painter.drawLine(hoverPos.x(), contentRect.top(), hoverPos.x(), contentRect.bottom());
+    }
+
     // 画鼠标交互的点
+    if (hovering)
+    {
+
+    }
 
 
     // 画标题/图例
@@ -221,17 +285,51 @@ void LineChart::paintEvent(QPaintEvent *event)
 
 }
 
+void LineChart::enterEvent(QEvent *event)
+{
+    QWidget::enterEvent(event);
+
+    hovering = true;
+}
+
+void LineChart::leaveEvent(QEvent *event)
+{
+    QWidget::leaveEvent(event);
+
+    hovering = false;
+}
+
 void LineChart::mouseMoveEvent(QMouseEvent *event)
 {
     QWidget::mouseMoveEvent(event);
+
+    hoverPos = event->pos();
+
+    if (pressing)
+    {
+        pressPos = hoverPos;
+    }
+    update();
 }
 
 void LineChart::mousePressEvent(QMouseEvent *event)
 {
     QWidget::mousePressEvent(event);
+
+    if (event->button() == Qt::LeftButton)
+    {
+        pressing = true;
+    }
+    update();
 }
 
 void LineChart::mouseReleaseEvent(QMouseEvent *event)
 {
     QWidget::mouseReleaseEvent(event);
+
+    if (event->button() == Qt::LeftButton)
+    {
+        pressing = false;
+    }
+    update();
 }
