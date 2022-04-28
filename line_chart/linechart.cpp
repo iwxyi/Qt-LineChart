@@ -117,12 +117,12 @@ void LineChart::paintEvent(QPaintEvent *event)
     if (datas.empty() || displayXMin >= displayXMax || displayYMin >= displayYMax)
         return ;
 
-    // 画数值
+    // 画X轴数值
     QFontMetrics fm(painter.font());
     int lineSpacing = fm.lineSpacing();
     const int labelSpacing = 2;
     int lastRight = 0; // 上一次绘图的位置
-    if (usePointLabels && xLabels.size()) // 使用传入的label，可以是和数据对应的任意字符串
+    if (usePointXLabels && xLabels.size()) // 使用传入的label，可以是和数据对应的任意字符串
     {
         for (int i = 0; i < xLabels.size(); i++)
         {
@@ -140,8 +140,8 @@ void LineChart::paintEvent(QPaintEvent *event)
     else // 使用 xMin ~ xMax 的 int
     {
         int maxTextWidth = qMax(fm.horizontalAdvance(QString::number(displayXMin)), fm.horizontalAdvance(QString::number(displayXMax)));
-        int displayCount = (contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing); // 最多显示多少个标签
-        int step = int((displayXMax - displayXMin + displayCount) / displayCount);
+        int displayCount = qMax((contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing), 1); // 最多显示多少个标签
+        int step = qMax((displayXMax - displayXMin + displayCount) / displayCount, 1);
         for (int i = displayXMin; i <= displayXMax; i += step)
         {
             int val = i;
@@ -153,6 +153,32 @@ void LineChart::paintEvent(QPaintEvent *event)
 
             painter.drawText(QPoint(l + contentRect.left(),  contentRect.bottom() + lineSpacing), QString::number(val));
             lastRight = r;
+        }
+    }
+
+    // 画Y轴数值
+    for (int k = 0; k < datas.size() & k < 2; k++)
+    {
+        int displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1);
+        int step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1);
+        for (int i = displayYMin; i <= displayYMax; i += step)
+        {
+            if (i == displayYMin && i == 0 && displayXMin == 0) // X轴有0了，Y轴不重复显示
+                continue;
+            int val = i;
+            if (val > displayYMax - step)
+                val = displayYMax; // 确保最大值一直显示
+            int y = contentRect.height() * (val - displayYMin) / (displayYMax - displayYMin);
+            int w = fm.horizontalAdvance(QString::number(val));
+
+            if (k == 0) // 左边
+            {
+                painter.drawText(QPoint(contentRect.left() - labelSpacing - w, contentRect.bottom() - y + lineSpacing / 2), QString::number(val));
+            }
+            else // 右边
+            {
+                painter.drawText(QPoint(contentRect.right() + labelSpacing, contentRect.bottom() - y + lineSpacing / 2), QString::number(val));
+            }
         }
     }
 

@@ -46,7 +46,7 @@ private:
     bool autoResize = true;                 // 自动调整大小
     int displayXMin = 0, displayXMax = 0;   // 显示的X轴范围
     int displayYMin = 0, displayYMax = 0;
-    bool usePointLabels = true;             // 优先使用点对应的label，还是相同间距的数值
+    bool usePointXLabels = true;             // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
 };
