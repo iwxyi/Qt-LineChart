@@ -78,14 +78,19 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
+    int pointLineType = 0;                  // 连线类型：0直线，1曲线
     bool showPointValue = true;             // 显示每一个点的数值
+    int pointValuePos = 0;                  // 数值显示位置：0强制上方，1自动附近，2自动省略
     bool showPointDot = true;               // 显示每一个点的圆圈
+    int pointDotRadius = 2;                 // 圆点半径
+    int pointDotType = 0;                   // 圆点类型：0空心圆，1实心圆，2小方块
 
     // 交互数据
     bool pressing = false;
     QPoint pressPos;
     bool hovering = false;
     QPoint hoverPos;
+    int nearDis = 8;                        // 四周这些距离内算是“附近”
 
     // 交互效果
     bool enableAnimation = true;
