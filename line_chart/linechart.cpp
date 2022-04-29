@@ -197,6 +197,49 @@ void LineChart::removeFirst(int index)
     }
 }
 
+/// 更新各个锚点
+void LineChart::updateAnchors()
+{
+    selectXStart = getValueByCursorPos(pressPos);
+    if (selecting)
+    {
+        selectXEnd = getValueByCursorPos(hoverPos);
+    }
+    else
+    {
+        selectXEnd = selectXStart;
+    }
+}
+
+void LineChart::zoom(double prop)
+{
+    if ((displayXMax - displayXMin) * prop < 2)
+        return ;
+
+    saveRange();
+    displayXMin = selectXStart - int((selectXStart - displayXMin) * prop);
+    displayXMax = selectXStart + int((displayXMax - selectXStart) * prop);
+    startRangeAnimation();
+}
+
+void LineChart::moveHorizontal(int x)
+{
+    saveRange();
+    displayXMin += x;
+    displayXMax += x;
+    startRangeAnimation();
+}
+
+void LineChart::zoomIn()
+{
+    zoom(0.5);
+}
+
+void LineChart::zoomOut()
+{
+    zoom(2);
+}
+
 void LineChart::paintEvent(QPaintEvent *event)
 {
     QWidget::paintEvent(event);
@@ -504,7 +547,7 @@ void LineChart::paintEvent(QPaintEvent *event)
             if (hovering && contentRect.contains(accessNearestPos) && (x + contentRect.left() >= accessNearestPos.x() - w && x + contentRect.left() <= accessNearestPos.x() + w))
             {
                 x = accessNearestPos.x() - contentRect.left();
-                val = (xMax - xMin) * x / contentRect.width();
+                val = (xMax - xMin) * x / contentRect.width() + xMin;
                 w = fm.horizontalAdvance(QString::number(val));
                 highlighted = true;
             }
@@ -615,15 +658,6 @@ void LineChart::mouseMoveEvent(QMouseEvent *event)
     {
         selecting = pressing && hovering && contentRect.contains(pressPos) && contentRect.contains(hoverPos)
                     && (pressPos - hoverPos).manhattanLength() > QApplication::startDragDistance();
-        selectXStart = getValueByCursorPos(pressPos);
-        if (selecting)
-        {
-            selectXEnd = getValueByCursorPos(hoverPos);
-        }
-        else
-        {
-            selectXEnd = selectXStart;
-        }
         emit signalSelectRangeChanged(selectXStart, selectXEnd);
     }
     update();
@@ -636,11 +670,12 @@ void LineChart::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         pressing = true;
+        selecting = false;
         pressPos = hoverPos = event->pos();
         if (enableSelect && contentRect.contains(pressPos) && displayXMax > displayXMin)
         {
             selectPos = event->x();
-            selectXStart = selectXEnd = getValueByCursorPos(pressPos);
+            updateAnchors();
             emit signalSelectRangeChanged(selectXStart, selectXEnd);
         }
         else
@@ -674,6 +709,25 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
         }
     }
     update();
+}
+
+void LineChart::wheelEvent(QWheelEvent *event)
+{
+    QWidget::wheelEvent(event);
+
+    auto modifiers = QApplication::keyboardModifiers();
+    int delta = event->delta();
+    if (modifiers & Qt::ControlModifier) // 缩放
+    {
+        if (delta > 0)
+            zoomIn();
+        else if (delta < 0)
+            zoomOut();
+    }
+    else
+    {
+        moveHorizontal(-(displayXMax - displayXMin) * delta / contentRect.width());
+    }
 }
 
 void LineChart::setDisplayXMin(int v)

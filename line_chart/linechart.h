@@ -81,6 +81,7 @@ class LineChart : public QWidget
     Q_PROPERTY(int display_x_max READ getDisplayXMax WRITE setDisplayXMax)
     Q_PROPERTY(int display_y_min READ getDisplayYMin WRITE setDisplayYMin)
     Q_PROPERTY(int display_y_max READ getDisplayYMax WRITE setDisplayYMax)
+
 public:
     LineChart(QWidget *parent = nullptr);
 
@@ -97,8 +98,16 @@ public:
     void addPoint(int index, int x, int y, const QString& label);
     void removeFirst(int index);
 
+    void updateAnchors();
+    void zoom(double prop);
+    void moveHorizontal(int x);
+
 signals:
     void signalSelectRangeChanged(int start, int end);
+
+public slots:
+    void zoomIn();
+    void zoomOut();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -107,6 +116,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
 private:
     void setDisplayXMin(int v);
