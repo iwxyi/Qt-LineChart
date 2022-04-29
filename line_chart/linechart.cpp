@@ -1,5 +1,7 @@
 #include "linechart.h"
 #include <QDebug>
+#include <QApplication>
+#include <QLinearGradient>
 
 LineChart::LineChart(QWidget *parent) : QWidget(parent)
 {
@@ -35,7 +37,12 @@ void LineChart::setPointDotRadius(int r)
     update();
 }
 
-void LineChart::addData(ChartData data)
+void LineChart::setLabelSpacing(int s)
+{
+    this->labelSpacing = s;
+}
+
+void LineChart::addLine(ChartData data)
 {
     saveRange();
     // 检查数据有效性
@@ -122,6 +129,13 @@ void LineChart::addData(ChartData data)
     startRangeAnimation();
 }
 
+void LineChart::removeLine(int index)
+{
+    Q_ASSERT(index < datas.size());
+    datas.removeAt(index);
+    update();
+}
+
 void LineChart::addPoint(int index, int x, int y)
 {
     saveRange();
@@ -191,7 +205,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing, true);
 
     /// 边界
-    QRect contentRect(paddings.left(), paddings.top(),
+    contentRect = QRect(paddings.left(), paddings.top(),
                       width() - paddings.left() - paddings.width(),
                       height() - paddings.top() - paddings.height());
     painter.setPen(QPen(borderColor, 0.5));
@@ -209,6 +223,9 @@ void LineChart::paintEvent(QPaintEvent *event)
     int lineSpacing = fm.height();
     QPoint accessNearestPos = hoverPos;
     int accessMinDis = 0x3f3f3f3f;
+
+    bool selecting = pressing && hovering && contentRect.contains(pressPos) && contentRect.contains(hoverPos)
+            && (pressPos - hoverPos).manhattanLength() > QApplication::startDragDistance();
 
     /// 画线条与数值
     painter.save();
@@ -309,6 +326,26 @@ void LineChart::paintEvent(QPaintEvent *event)
             }
             painter.setPen(line.color);
             painter.drawPath(path);
+
+            // 画选区效果
+            if (selecting)
+            {
+                int startX = pressPos.x(), endX = hoverPos.x();
+                QPainterPath downPath = path;
+                downPath.lineTo(contentRect.bottomRight());
+                downPath.lineTo(contentRect.bottomLeft());
+                QRect clipRect(startX, contentRect.top(), endX - startX, contentRect.height());
+                painter.save();
+                painter.setClipRect(clipRect);
+                QLinearGradient lg = QLinearGradient(QPointF(0, 0), QPointF(0, contentRect.height()));
+                QColor c = line.color;
+                c.setAlpha(line.color.alpha() / 3);
+                lg.setColorAt(0.0, c);
+                c.setAlpha(4);
+                lg.setColorAt(1.0, c);
+                painter.fillPath(downPath, lg);
+                painter.restore();
+            }
         }
 
         // 绘制点的小圆点
@@ -541,7 +578,7 @@ void LineChart::paintEvent(QPaintEvent *event)
     }
 
     /// 交互
-    // 画鼠标交互的线
+    // 画悬浮的十字对准线
     if (showCrossOnPressing && hovering && contentRect.contains(accessNearestPos))
     {
         painter.setPen(QPen(hightlightColor, 0.5, Qt::DashLine));
@@ -549,9 +586,23 @@ void LineChart::paintEvent(QPaintEvent *event)
         painter.drawLine(accessNearestPos.x(), contentRect.top(), accessNearestPos.x(), contentRect.bottom());
     }
 
+    // 画鼠标点击的垂直线
+    painter.setPen(selectColor);
+    if (contentRect.contains(pressPos))
+    {
+        painter.drawLine(selectPos, contentRect.top(), selectPos, contentRect.bottom());
+    }
 
-    // 画标题/图例
+    // 画选区
+    if (selecting)
+    {
+        // 画鼠标拖拽的线
+        painter.drawLine(hoverPos.x(), contentRect.top(), hoverPos.x(), contentRect.bottom());
 
+        // 画选区效果
+    }
+
+    // 画选中的区域
 
 }
 
@@ -577,7 +628,7 @@ void LineChart::mouseMoveEvent(QMouseEvent *event)
 
     if (pressing)
     {
-        pressPos = hoverPos;
+
     }
     update();
 }
@@ -589,7 +640,19 @@ void LineChart::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         pressing = true;
+        pressPos = hoverPos = event->pos();
+        if (enableSelect && contentRect.contains(pressPos) && displayXMax > displayXMin)
+        {
+            selectPos = event->x();
+            selectXStart = contentRect.width() * (selectPos - contentRect.left()) / (displayXMax - displayXMin);
+        }
+        else
+        {
+            selectPos = 0;
+            pressPos = hoverPos = releasePos = QPoint();
+        }
     }
+
     update();
 }
 
@@ -600,6 +663,15 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         pressing = false;
+
+        releasePos = hoverPos;
+        if (contentRect.contains(pressPos) && contentRect.contains(releasePos))
+        {
+            if ((releasePos - pressPos).manhattanLength() > QApplication::startDragDistance()) // 选区松开
+            {
+                // TODO: 放大选区位置
+            }
+        }
     }
     update();
 }

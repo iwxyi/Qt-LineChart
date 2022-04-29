@@ -89,13 +89,16 @@ public:
     void setPointValueType(int t);
     void setPointDotType(int t);
     void setPointDotRadius(int r);
+    void setLabelSpacing(int s);
 
-    void addData(ChartData data);
+    void addLine(ChartData data);
+    void removeLine(int index);
     void addPoint(int index, int x, int y);
     void addPoint(int index, int x, int y, const QString& label);
     void removeFirst(int index);
 
 signals:
+    void signalSelectRangeChanged(int start, int end);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -124,6 +127,7 @@ private:
     QList<ChartData> datas;                 // 所有折线的数据
 
     // 界面
+    QRect contentRect;                      // 显示的范围，实时刷新
     QRect paddings = QRect(32, 32, 32, 32); // 四周留白(width=right,height=bottom)
     QColor borderColor = Qt::gray;          // 边界线颜色
     int labelSpacing = 2;                   // 标签间距
@@ -135,24 +139,13 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
-    int pointLineType = 3;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
+    int pointLineType = 1;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
     int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近
     int pointDotType = 1;                   // 圆点类型：0无，1空心圆，2实心圆，3小方块
     int pointDotRadius = 2;                 // 圆点半径
 
-    // 交互数据
-    bool pressing = false;
-    QPoint pressPos;
-    bool hovering = false;
-    QPoint hoverPos;
-    int nearDis = 8;                        // 四周这些距离内算是“附近”
-
-    // 交互效果
-    bool enableAnimation = true;
-    bool showCrossOnPressing = true;        // 按下显示十字对准线
-    QColor hightlightColor = Qt::red;       // 高亮颜色
-
     // 动画效果
+    bool enableAnimation = true;
     int _savedXMin, _savedXMax;             // 修改前的数值
     int _savedYMin, _savedYMax;
     bool animatingXMin = false, animatingXMax = false; // 是否正在动画中
@@ -160,9 +153,26 @@ private:
     int _animatedXMin, _animatedXMax;       // 动画中的数值（仅影响显示）
     int _animatedYMin, _animatedYMax;
 
-    // 缩放
-    int selectPos = 0;
+    // 交互数据
+    bool pressing = false;
+    QPoint pressPos, releasePos;
+    bool hovering = false;
+    QPoint hoverPos;
+    int nearDis = 8;                        // 四周这些距离内算是“附近”
 
+    // 悬浮提示
+    bool showCrossOnPressing = true;        // 按下显示十字对准线
+    QColor hightlightColor = QColor("#FF7300");       // 高亮颜色
+
+    // 鼠标选择
+    bool enableSelect = true;
+    int selectPos = 0;                      // 最后一次鼠标点击的X像素（相对显示矩形）
+    int selectXStart = 0, selectXEnd = 0;   // 鼠标按下/松开的对应X值位置
+    QColor selectColor = QColor("#F08080"); // 选择区域颜色
+
+    // 缩放(仅针对X轴)
+    bool enableScale = true;
+    int displayXStart = 0, displayXEnd = 0;
 };
 
 #endif // LINECHART_H

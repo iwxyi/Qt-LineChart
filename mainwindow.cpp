@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     {
         ChartData data;
         data.title = "一条线";
-        data.color = Qt::blue;
+        data.color = QColor("#6495ED");
         data.xMin = data.yMin = 0;
         data.xMax = 100;
         data.yMax = 100;
@@ -20,13 +20,13 @@ MainWindow::MainWindow(QWidget *parent)
             // data.xLabels.append(QString::number(i * 5));
         }
 
-        ui->widget->addData(data);
+        ui->widget->addLine(data);
     }
 
     {
         ChartData data;
         data.title = "一条线";
-        data.color = Qt::red;
+        data.color = QColor("#0DBF8C");
         data.xMin = data.yMin = 0;
         data.xMax = 100;
         data.yMax = 100;
@@ -34,7 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
         {
             data.points.append(QPoint(i * 5, qrand() % 30));
         }
-        ui->widget->addData(data);
+        ui->widget->addLine(data);
     }
 }
 
@@ -45,7 +45,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_clicked()
 {
-    static int x = 100;
     x += 5;
     ui->widget->addPoint(0, x, qrand() % 60 + 20);
     ui->widget->addPoint(1, x, qrand() % 30);
@@ -53,6 +52,16 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::on_pushButton_2_clicked()
 {
+    for (int i = 0; i < ui->widget->lineCount(); i++)
+        ui->widget->removeFirst(i);
+}
+
+void MainWindow::on_pushButton_3_clicked()
+{
+    x += 5;
+    ui->widget->addPoint(0, x, qrand() % 60 + 20);
+    ui->widget->addPoint(1, x, qrand() % 30);
+
     for (int i = 0; i < ui->widget->lineCount(); i++)
         ui->widget->removeFirst(i);
 }
