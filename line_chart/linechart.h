@@ -117,7 +117,7 @@ private:
 
     void saveRange();
     void startRangeAnimation();
-    QPropertyAnimation* startAnimation(const QByteArray &property, int start, int end, int duration = 300, QEasingCurve curve = QEasingCurve::OutQuad);
+    QPropertyAnimation* startAnimation(const QByteArray &property, int start, int end, bool* flag, int duration = 300, QEasingCurve curve = QEasingCurve::OutQuad);
 
 private:
     // 数据
@@ -135,8 +135,8 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
-    int pointLineType = 2;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
-    int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近，3自动省略
+    int pointLineType = 3;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
+    int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近
     int pointDotType = 1;                   // 圆点类型：0无，1空心圆，2实心圆，3小方块
     int pointDotRadius = 2;                 // 圆点半径
 
@@ -153,8 +153,16 @@ private:
     QColor hightlightColor = Qt::red;       // 高亮颜色
 
     // 动画效果
-    int _savedXMin, _savedXMax;
+    int _savedXMin, _savedXMax;             // 修改前的数值
     int _savedYMin, _savedYMax;
+    bool animatingXMin = false, animatingXMax = false; // 是否正在动画中
+    bool animatingYMin = false, animatingYMax = false;
+    int _animatedXMin, _animatedXMax;       // 动画中的数值（仅影响显示）
+    int _animatedYMin, _animatedYMax;
+
+    // 缩放
+    int selectPos = 0;
+
 };
 
 #endif // LINECHART_H

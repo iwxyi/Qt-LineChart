@@ -169,7 +169,7 @@ void LineChart::removeFirst(int index)
     // 调整最小值
     if (equal)
     {
-        // saveRange();
+        saveRange();
         int newXMin = displayXMax;
         for (int i = 0; i < datas.size(); i++)
             if (!datas.at(i).points.empty())
@@ -179,8 +179,7 @@ void LineChart::removeFirst(int index)
                     newXMin = x;
             }
         displayXMin = newXMin;
-        update();
-        // startRangeAnimation();
+        startRangeAnimation();
     }
 }
 
@@ -198,7 +197,12 @@ void LineChart::paintEvent(QPaintEvent *event)
     painter.setPen(QPen(borderColor, 0.5));
     painter.drawRect(contentRect);
 
-    if (datas.empty() || displayXMin >= displayXMax || displayYMin >= displayYMax)
+    const int xMin = animatingXMin ? _animatedXMin : displayXMin,
+            xMax = animatingXMax ? _animatedXMax : displayXMax;
+    const int yMin = animatingYMin ? _animatedYMin : displayYMin,
+            yMax = animatingYMax ? _animatedYMax : displayYMax;
+
+    if (datas.empty() || xMin >= xMax || yMin >= yMax)
         return ;
 
     QFontMetrics fm(painter.font());
@@ -219,8 +223,8 @@ void LineChart::paintEvent(QPaintEvent *event)
         {
             const QPoint& pt = line.points.at(j);
             const QPoint contentPt(
-                        contentRect.width() * (pt.x() - displayXMin) / (displayXMax - displayXMin),
-                        contentRect.height() * (pt.y() - displayYMin) / (displayYMax - displayYMin)
+                        contentRect.width() * (pt.x() - xMin) / (xMax - xMin),
+                        contentRect.height() * (pt.y() - yMin) / (yMax - yMin)
                         );
             const QPoint dispt(
                         contentRect.left() + contentPt.x(),
@@ -440,7 +444,7 @@ void LineChart::paintEvent(QPaintEvent *event)
         for (int i = 0; i < xLabels.size(); i++)
         {
             int val = xLabelPoss.at(i); // 数据x
-            int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
+            int x = contentRect.width() * (val - xMin) / (xMax - xMin); // 视图x
             int w = fm.horizontalAdvance(xLabels.at(i)); // 文字宽度
             int l = x - w / 2, r = x + w / 2; // 绘制的文字x范围
             if (!i || l > lastRight + labelSpacing || (i == xLabels.size() - 1 && (l = lastRight + labelSpacing)))
@@ -453,20 +457,20 @@ void LineChart::paintEvent(QPaintEvent *event)
     else // 使用 xMin ~ xMax 的 int
     {
         bool highlighted = false;
-        int maxTextWidth = qMax(fm.horizontalAdvance(QString::number(displayXMin)), fm.horizontalAdvance(QString::number(displayXMax)));
+        int maxTextWidth = qMax(fm.horizontalAdvance(QString::number(xMin)), fm.horizontalAdvance(QString::number(xMax)));
         int displayCount = qMax((contentRect.width() + labelSpacing) / (maxTextWidth + labelSpacing), 1); // 最多显示多少个标签
-        int step = qMax((displayXMax - displayXMin + displayCount) / displayCount, 1);
-        for (int i = displayXMin; i <= displayXMax; i += step)
+        int step = qMax((xMax - xMin + displayCount) / displayCount, 1);
+        for (int i = xMin; i <= xMax; i += step)
         {
             int val = i;
-            if (val > displayXMax - step)
-                val = displayXMax; // 确保最大值一直显示
-            int x = contentRect.width() * (val - displayXMin) / (displayXMax - displayXMin); // 视图x
+            if (val > xMax - step)
+                val = xMax; // 确保最大值一直显示
+            int x = contentRect.width() * (val - xMin) / (xMax - xMin); // 视图x
             int w = fm.horizontalAdvance(QString::number(val)); // 文字宽度
             if (hovering && contentRect.contains(accessNearestPos) && (x + contentRect.left() >= accessNearestPos.x() - w && x + contentRect.left() <= accessNearestPos.x() + w))
             {
                 x = accessNearestPos.x() - contentRect.left();
-                val = (displayXMax - displayXMin) * x / contentRect.width();
+                val = (xMax - xMin) * x / contentRect.width();
                 w = fm.horizontalAdvance(QString::number(val));
                 highlighted = true;
             }
@@ -492,25 +496,25 @@ void LineChart::paintEvent(QPaintEvent *event)
     {
         bool highlighted = false;
         int displayCount = qMax((contentRect.height() + labelSpacing) / (lineSpacing + labelSpacing), 1);
-        int step = qMax((displayYMax - displayYMin + displayCount) / displayCount, 1);
-        for (int i = displayYMin; i <= displayYMax; i += step)
+        int step = qMax((yMax - yMin + displayCount) / displayCount, 1);
+        for (int i = yMin; i <= yMax; i += step)
         {
-            if (i == displayYMin && displayYMin == 0 && displayXMin == 0) // X轴有0了，Y轴不重复显示
+            if (i == yMin && yMin == 0 && xMin == 0) // X轴有0了，Y轴不重复显示
                 continue;
             int val = i;
-            if (val > displayYMax - step)
+            if (val > yMax - step)
             {
-                if (val < displayYMax - step / 2)
-                    i = displayYMax - step;
+                if (val < yMax - step / 2)
+                    i = yMax - step;
                 else
-                    val = displayYMax; // 确保最大值一直显示
+                    val = yMax; // 确保最大值一直显示
             }
-            int y = contentRect.height() * (val - displayYMin) / (displayYMax - displayYMin);
+            int y = contentRect.height() * (val - yMin) / (yMax - yMin);
             y = contentRect.bottom() - y;
             if (hovering && contentRect.contains(accessNearestPos) && (y >= accessNearestPos.y() - lineSpacing && y <= accessNearestPos.y() + lineSpacing))
             {
                 y = accessNearestPos.y();
-                val = (displayYMax - displayYMin) * (contentRect.bottom() - y) / contentRect.height() + displayYMin;
+                val = (yMax - yMin) * (contentRect.bottom() - y) / contentRect.height() + yMin;
                 highlighted = true;
             }
             int w = fm.horizontalAdvance(QString::number(val));
@@ -602,46 +606,46 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
 
 void LineChart::setDisplayXMin(int v)
 {
-    this->displayXMin = v;
+    this->_animatedXMin = v;
     update();
 }
 
 int LineChart::getDisplayXMin() const
 {
-    return this->displayXMin;
+    return this->_animatedXMin;
 }
 
 void LineChart::setDisplayXMax(int v)
 {
-    this->displayXMax = v;
+    this->_animatedXMax = v;
     update();
 }
 
 int LineChart::getDisplayXMax() const
 {
-    return this->displayXMax;
+    return this->_animatedXMax;
 }
 
 void LineChart::setDisplayYMin(int v)
 {
-    this->displayYMin = v;
+    this->_animatedYMin = v;
     update();
 }
 
 int LineChart::getDisplayYMin() const
 {
-    return this->displayYMin;
+    return this->_animatedYMin;
 }
 
 void LineChart::setDisplayYMax(int v)
 {
-    this->displayYMax = v;
+    this->_animatedYMax = v;
     update();
 }
 
 int LineChart::getDisplayYMax() const
 {
-    return this->displayYMax;
+    return this->_animatedYMax;
 }
 
 void LineChart::saveRange()
@@ -660,24 +664,29 @@ void LineChart::startRangeAnimation()
         return ;
     }
     if (_savedXMin != displayXMin)
-        startAnimation("display_x_min", _savedXMin, displayXMin);
+        startAnimation("display_x_min", _savedXMin, displayXMin, &animatingXMin);
     if (_savedXMax != displayXMax)
-        startAnimation("display_x_max", _savedXMax, displayXMax);
+        startAnimation("display_x_max", _savedXMax, displayXMax, &animatingXMax);
     if (_savedYMin != displayYMin)
-        startAnimation("display_y_min", _savedYMin, displayYMin);
+        startAnimation("display_y_min", _savedYMin, displayYMin, &animatingYMin);
     if (_savedYMax != displayYMax)
-        startAnimation("display_y_max", _savedYMax, displayYMax);
+        startAnimation("display_y_max", _savedYMax, displayYMax, &animatingYMax);
     update();
 }
 
-QPropertyAnimation *LineChart::startAnimation(const QByteArray &property, int start, int end, int duration, QEasingCurve curve)
+QPropertyAnimation *LineChart::startAnimation(const QByteArray &property, int start, int end, bool *flag, int duration, QEasingCurve curve)
 {
+    *flag = true;
     QPropertyAnimation* ani = new QPropertyAnimation(this, property);
     ani->setStartValue(start);
     ani->setEndValue(end);
     ani->setDuration(duration);
     ani->setEasingCurve(curve);
     connect(ani, SIGNAL(finished()), ani, SLOT(deleteLater()));
+    connect(ani, &QPropertyAnimation::finished, this, [=]{
+        *flag = false;
+        update();
+    });
     ani->start();
     return ani;
 }
