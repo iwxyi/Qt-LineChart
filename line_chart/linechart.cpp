@@ -206,22 +206,68 @@ void LineChart::paintEvent(QPaintEvent *event)
         }
 
         // 连线
-        QPainterPath path;
-        if (pointLineType == 1) // 直线
+        if (pointLineType && displayPoints.size() > 1)
         {
-            if (displayPoints.size())
+            QPainterPath path;
+            if (pointLineType == 1) // 直线
             {
                 path.moveTo(displayPoints.first());
                 for (int i = 1; i < displayPoints.size(); i++)
                     path.lineTo(displayPoints.at(i));
             }
+            else if (pointLineType == 2) // 二次贝塞尔曲线
+            {
+                // TODO: 二次贝塞尔曲线
+            }
+            else if (pointLineType == 3) // 三次贝塞尔曲线
+            {
+                // 算法参考：https://juejin.cn/post/6844903477273952270
+                // 源码参考：https://github.com/AlloyTeam/curvejs/blob/master/asset/smooth.html
+                double rt = 0.2; // 平滑度
+                QList<Vector2D> controlPoints;
+                const auto& points = displayPoints;
+                int count = points.size() - 2;
+                for (int i = 0; i < count; i++)
+                {
+                    QPoint a = points.at(i), b = points.at(i+1), c = points.at(i+2);
+                    Vector2D v1(a - b);
+                    Vector2D v2(c - b);
+                    double v1Len = v1.length(), v2Len = v2.length();
+                    Vector2D centerV = (v1.normalize() + v2.normalize()).normalize();
+
+                    Vector2D ncp1(centerV.y(), centerV.x() * - 1);
+                    Vector2D ncp2(centerV.y() * -1, centerV.x());
+                    if (ncp1.angle(v1) < 90)
+                    {
+                        Vector2D p1 = ncp1 * (v1Len * rt) + b;
+                        Vector2D p2 = ncp2 * (v2Len * rt) + b;
+                        controlPoints.append(p1);
+                        controlPoints.append(p2);
+                    }
+                    else
+                    {
+                        Vector2D p1 = ncp1 * (v2Len * rt) + b;
+                        Vector2D p2 = ncp2 * (v1Len * rt) + b;
+                        controlPoints.append(p2);
+                        controlPoints.append(p1);
+                    }
+                }
+
+                path.moveTo(points.at(0));
+                path.cubicTo(points.at(0), controlPoints.at(0), points.at(1));
+
+                for (int i = 1; i < count; i++)
+                {
+                    path.moveTo(points.at(i));
+                    path.cubicTo(controlPoints.at(i * 2 - 1), controlPoints.at(i * 2), QPointF(points.at(i+1)));
+                }
+
+                path.moveTo(points.at(count));
+                path.cubicTo(controlPoints.last(), points.last(), points.last());
+            }
+            painter.setPen(line.color);
+            painter.drawPath(path);
         }
-        else if (pointLineType == 2) // 曲线
-        {
-            // TODO: 平滑的贝塞尔曲线
-        }
-        painter.setPen(line.color);
-        painter.drawPath(path);
 
         // 绘制点的小圆点
         if (pointDotType)

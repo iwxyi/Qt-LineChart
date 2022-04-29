@@ -7,6 +7,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPropertyAnimation>
+#include <QtMath>
 
 struct ChartData
 {
@@ -18,6 +19,59 @@ struct ChartData
     int yMax = 0;
     QList<QPoint> points;
     QList<QString> xLabels; // X显示的名字，可空，比如日期
+};
+
+struct Vector2D : public QPointF
+{
+    Vector2D(double x, double y) : QPointF(x, y)
+    {
+    }
+
+    Vector2D(QPointF p) : QPointF(p)
+    {
+    }
+
+    /// 向量长度
+    double length()
+    {
+        return sqrt(x() * x() + y() * y());
+    }
+
+    /// 转单位向量
+    Vector2D normalize()
+    {
+        double len = length();
+        double inv;
+        if (len < 1e-4)
+            inv = 0;
+        else
+            inv = 1 / length();
+        return Vector2D(x() * inv, y() * inv);
+    }
+
+    /// 向量相加
+    Vector2D operator+ (Vector2D v)
+    {
+        return Vector2D(x() + v.x(), y() + v.y());
+    }
+
+    /// 向量翻倍
+    Vector2D operator* (double f)
+    {
+        return Vector2D(x() * f, y() * f);
+    }
+
+    /// 内积
+    double dot(Vector2D v)
+    {
+        return x() * v.x() + y() * v.y();
+    }
+
+    /// 两个向量夹角
+    double angle(Vector2D v)
+    {
+        return acos(dot(v) / (length() * v.length())) * 180 / M_PI;
+    }
 };
 
 class LineChart : public QWidget
@@ -78,7 +132,7 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
-    int pointLineType = 1;                  // 连线类型：1直线，2曲线
+    int pointLineType = 3;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
     int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近，3自动省略
     int pointDotType = 1;                   // 圆点类型：0无，1空心圆，2实心圆，3小方块
     int pointDotRadius = 2;                 // 圆点半径
