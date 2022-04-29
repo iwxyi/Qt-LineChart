@@ -151,7 +151,7 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
-    int pointLineType = 1;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
+    int pointLineType = 3;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
     int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近
     int pointDotType = 1;                   // 圆点类型：0无，1空心圆，2实心圆，3小方块
     int pointDotRadius = 2;                 // 圆点半径

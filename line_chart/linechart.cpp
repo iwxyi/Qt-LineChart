@@ -220,6 +220,7 @@ void LineChart::zoom(double prop)
     displayXMin = selectXStart - int((selectXStart - displayXMin) * prop);
     displayXMax = selectXStart + int((displayXMax - selectXStart) * prop);
     startRangeAnimation();
+    updateAnchors();
 }
 
 void LineChart::moveHorizontal(int x)
@@ -228,6 +229,7 @@ void LineChart::moveHorizontal(int x)
     displayXMin += x;
     displayXMax += x;
     startRangeAnimation();
+    updateAnchors();
 }
 
 void LineChart::zoomIn()
@@ -354,14 +356,10 @@ void LineChart::paintEvent(QPaintEvent *event)
 
                 path.moveTo(points.at(0));
                 path.cubicTo(points.at(0), controlPoints.at(0), points.at(1));
-
                 for (int i = 1; i < count; i++)
                 {
-                    path.moveTo(points.at(i));
                     path.cubicTo(controlPoints.at(i * 2 - 1), controlPoints.at(i * 2), QPointF(points.at(i+1)));
                 }
-
-                path.moveTo(points.at(count));
                 path.cubicTo(controlPoints.last(), points.last(), points.last());
             }
             painter.setPen(line.color);
@@ -372,8 +370,9 @@ void LineChart::paintEvent(QPaintEvent *event)
             {
                 int startX = pressPos.x(), endX = hoverPos.x();
                 QPainterPath downPath = path;
-                downPath.lineTo(contentRect.bottomRight());
-                downPath.lineTo(contentRect.bottomLeft());
+                downPath.lineTo(points.last().x(), contentRect.bottom());
+                downPath.lineTo(points.first().x(), contentRect.bottom());
+                downPath.lineTo(points.first());
                 QRect clipRect(startX, contentRect.top(), endX - startX, contentRect.height());
                 painter.save();
                 painter.setClipRect(clipRect);
@@ -412,7 +411,7 @@ void LineChart::paintEvent(QPaintEvent *event)
             }
         }
 
-        // 绘制数值
+        // 绘制所有点的数值
         if (pointValueType)
         {
             const QList<QPoint>& points = line.points;
@@ -420,6 +419,8 @@ void LineChart::paintEvent(QPaintEvent *event)
             {
                 QString text = QString::number(points.at(i).y());
                 QPoint pos = displayPoints.at(i);
+                if (pos.x() < contentRect.left() || pos.x() > contentRect.right())
+                    continue;
                 int w = fm.horizontalAdvance(text);
                 int x = pos.x() - w / 2;
                 int y = pos.y() - pointDotRadius - fm.leading(); // 默认是强制正上方位置
