@@ -682,7 +682,11 @@ QPropertyAnimation *LineChart::startAnimation(const QByteArray &property, int st
     ani->setEndValue(end);
     ani->setDuration(duration);
     ani->setEasingCurve(curve);
-    connect(ani, SIGNAL(finished()), ani, SLOT(deleteLater()));
+    connect(ani, &QPropertyAnimation::stateChanged, this, [=](QPropertyAnimation::State state) {
+        // 避免动画过程中的内存泄漏
+        if (state == QPropertyAnimation::State::Stopped)
+            ani->deleteLater();
+    });
     connect(ani, &QPropertyAnimation::finished, this, [=]{
         *flag = false;
         update();
