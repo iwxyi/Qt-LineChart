@@ -224,9 +224,6 @@ void LineChart::paintEvent(QPaintEvent *event)
     QPoint accessNearestPos = hoverPos;
     int accessMinDis = 0x3f3f3f3f;
 
-    bool selecting = pressing && hovering && contentRect.contains(pressPos) && contentRect.contains(hoverPos)
-            && (pressPos - hoverPos).manhattanLength() > QApplication::startDragDistance();
-
     /// 画线条与数值
     painter.save();
     QPainterPath contentPath;
@@ -592,18 +589,6 @@ void LineChart::paintEvent(QPaintEvent *event)
     {
         painter.drawLine(selectPos, contentRect.top(), selectPos, contentRect.bottom());
     }
-
-    // 画选区
-    if (selecting)
-    {
-        // 画鼠标拖拽的线
-        painter.drawLine(hoverPos.x(), contentRect.top(), hoverPos.x(), contentRect.bottom());
-
-        // 画选区效果
-    }
-
-    // 画选中的区域
-
 }
 
 void LineChart::enterEvent(QEvent *event)
@@ -628,7 +613,18 @@ void LineChart::mouseMoveEvent(QMouseEvent *event)
 
     if (pressing)
     {
-
+        selecting = pressing && hovering && contentRect.contains(pressPos) && contentRect.contains(hoverPos)
+                    && (pressPos - hoverPos).manhattanLength() > QApplication::startDragDistance();
+        selectXStart = getValueByCursorPos(pressPos);
+        if (selecting)
+        {
+            selectXEnd = getValueByCursorPos(hoverPos);
+        }
+        else
+        {
+            selectXEnd = selectXStart;
+        }
+        emit signalSelectRangeChanged(selectXStart, selectXEnd);
     }
     update();
 }
@@ -644,7 +640,8 @@ void LineChart::mousePressEvent(QMouseEvent *event)
         if (enableSelect && contentRect.contains(pressPos) && displayXMax > displayXMin)
         {
             selectPos = event->x();
-            selectXStart = contentRect.width() * (selectPos - contentRect.left()) / (displayXMax - displayXMin);
+            selectXStart = selectXEnd = getValueByCursorPos(pressPos);
+            emit signalSelectRangeChanged(selectXStart, selectXEnd);
         }
         else
         {
@@ -663,6 +660,9 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         pressing = false;
+        selecting = false;
+        selectXEnd = selectXStart;
+        emit signalSelectRangeChanged(selectXStart, selectXEnd);
 
         releasePos = hoverPos;
         if (contentRect.contains(pressPos) && contentRect.contains(releasePos))
@@ -765,4 +765,9 @@ QPropertyAnimation *LineChart::startAnimation(const QByteArray &property, int st
     });
     ani->start();
     return ani;
+}
+
+int LineChart::getValueByCursorPos(QPoint pos)
+{
+    return (displayXMax - displayXMin) * (pos.x() - contentRect.left()) / contentRect.width() + displayXMin;
 }

@@ -7,6 +7,11 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    connect(ui->widget, &LineChart::signalSelectRangeChanged, this, [=](int start, int end) {
+        ui->label->setText("选中：" + QString::number(start) + " ~ " + QString::number(end));
+    });
+
+
     {
         ChartData data;
         data.title = "一条线";

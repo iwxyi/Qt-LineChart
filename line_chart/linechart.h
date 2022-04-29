@@ -122,6 +122,8 @@ private:
     void startRangeAnimation();
     QPropertyAnimation* startAnimation(const QByteArray &property, int start, int end, bool* flag, int duration = 300, QEasingCurve curve = QEasingCurve::OutQuad);
 
+    int getValueByCursorPos(QPoint pos);
+
 private:
     // 数据
     QList<ChartData> datas;                 // 所有折线的数据
@@ -166,6 +168,7 @@ private:
 
     // 鼠标选择
     bool enableSelect = true;
+    bool selecting = false;
     int selectPos = 0;                      // 最后一次鼠标点击的X像素（相对显示矩形）
     int selectXStart = 0, selectXEnd = 0;   // 鼠标按下/松开的对应X值位置
     QColor selectColor = QColor("#F08080"); // 选择区域颜色
