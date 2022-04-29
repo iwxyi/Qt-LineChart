@@ -11,6 +11,30 @@ int LineChart::lineCount() const
     return datas.size();
 }
 
+void LineChart::setPointLineType(int t)
+{
+    this->pointLineType = t;
+    update();
+}
+
+void LineChart::setPointValueType(int t)
+{
+    this->pointValueType = t;
+    update();
+}
+
+void LineChart::setPointDotType(int t)
+{
+    this->pointDotType = t;
+    update();
+}
+
+void LineChart::setPointDotRadius(int r)
+{
+    this->pointDotRadius = r;
+    update();
+}
+
 void LineChart::addData(ChartData data)
 {
     saveRange();
@@ -208,16 +232,31 @@ void LineChart::paintEvent(QPaintEvent *event)
         // 连线
         if (pointLineType && displayPoints.size() > 1)
         {
+            // 源码参考：https://github.com/AlloyTeam/curvejs/blob/master/src/smooth-curve.js
+            const auto& points = displayPoints;
             QPainterPath path;
             if (pointLineType == 1) // 直线
             {
-                path.moveTo(displayPoints.first());
-                for (int i = 1; i < displayPoints.size(); i++)
-                    path.lineTo(displayPoints.at(i));
+                path.moveTo(points.first());
+                for (int i = 1; i < points.size(); i++)
+                    path.lineTo(points.at(i));
             }
             else if (pointLineType == 2) // 二次贝塞尔曲线
             {
-                // TODO: 二次贝塞尔曲线
+                path.moveTo(points.at(0));
+                for (int i = 1; i < points.size() - 1; i++)
+                {
+                    if (i == points.size() - 2)
+                    {
+                        path.quadTo(points.at(i), points.at(i + 1));
+                    }
+                    else
+                    {
+                        path.quadTo(points.at(i),
+                                    QPoint((points.at(i).x() + points.at(i+1).x())/2,
+                                           (points.at(i).y() + points.at(i+1).y())/2));
+                    }
+                }
             }
             else if (pointLineType == 3) // 三次贝塞尔曲线
             {
@@ -225,7 +264,6 @@ void LineChart::paintEvent(QPaintEvent *event)
                 // 源码参考：https://github.com/AlloyTeam/curvejs/blob/master/asset/smooth.html
                 double rt = 0.2; // 平滑度
                 QList<Vector2D> controlPoints;
-                const auto& points = displayPoints;
                 int count = points.size() - 2;
                 for (int i = 0; i < count; i++)
                 {

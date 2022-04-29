@@ -85,14 +85,17 @@ public:
     LineChart(QWidget *parent = nullptr);
 
     int lineCount() const;
+    void setPointLineType(int t);
+    void setPointValueType(int t);
+    void setPointDotType(int t);
+    void setPointDotRadius(int r);
 
-signals:
-
-public slots:
     void addData(ChartData data);
     void addPoint(int index, int x, int y);
     void addPoint(int index, int x, int y, const QString& label);
     void removeFirst(int index);
+
+signals:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -132,7 +135,7 @@ private:
     bool usePointXLabels = true;            // 优先使用点对应的label，还是相同间距的数值
     QList<QString> xLabels;                 // 显示的文字（可能少于值数量）
     QList<int> xLabelPoss;
-    int pointLineType = 3;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
+    int pointLineType = 2;                  // 连线类型：1直线，2二次贝塞尔曲线，3三次贝塞尔曲线（更精确但吃性能）
     int pointValueType = 2;                 // 数值显示位置：0无，1强制上方，2自动附近，3自动省略
     int pointDotType = 1;                   // 圆点类型：0无，1空心圆，2实心圆，3小方块
     int pointDotRadius = 2;                 // 圆点半径
