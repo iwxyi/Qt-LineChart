@@ -209,6 +209,7 @@ void LineChart::updateAnchors()
     {
         selectXEnd = selectXStart;
     }
+    emit signalSelectRangeChanged(selectXStart, selectXEnd);
 }
 
 void LineChart::zoom(double prop)
@@ -659,7 +660,7 @@ void LineChart::mouseMoveEvent(QMouseEvent *event)
     {
         selecting = pressing && hovering && contentRect.contains(pressPos) && contentRect.contains(hoverPos)
                     && (pressPos - hoverPos).manhattanLength() > QApplication::startDragDistance();
-        emit signalSelectRangeChanged(selectXStart, selectXEnd);
+        updateAnchors();
     }
     update();
 }
@@ -677,7 +678,6 @@ void LineChart::mousePressEvent(QMouseEvent *event)
         {
             selectPos = event->x();
             updateAnchors();
-            emit signalSelectRangeChanged(selectXStart, selectXEnd);
         }
         else
         {
@@ -697,8 +697,7 @@ void LineChart::mouseReleaseEvent(QMouseEvent *event)
     {
         pressing = false;
         selecting = false;
-        selectXEnd = selectXStart;
-        emit signalSelectRangeChanged(selectXStart, selectXEnd);
+        updateAnchors();
 
         releasePos = hoverPos;
         if (contentRect.contains(pressPos) && contentRect.contains(releasePos))

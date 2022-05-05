@@ -8,7 +8,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->widget, &LineChart::signalSelectRangeChanged, this, [=](int start, int end) {
-        ui->label->setText("选中：" + QString::number(start) + " ~ " + QString::number(end));
+        if (start != end)
+            ui->label->setText("选中：" + QString::number(start) + " ~ " + QString::number(end));
+        else
+            ui->label->setText("位置：" + QString::number(start));
     });
 
 
